@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Hakoniwa Three.js Drone Viewer</title>
+  <link rel="icon" href="data:,">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   sans-serif;
+    }
+
+    #main-container {
+      display: flex;
+      height: 100%;
+      width: 100%;
+    }
+
+    #panel {
+      width: 260px;
+      background-color: #f0f0f0;
+      padding: 10px;
+      box-sizing: border-box;
+      border-right: 1px solid #ccc;
+      overflow-y: auto;
+    }
+
+    #panel h3 {
+      margin: 12px 0 6px;
+      font-size: 14px;
+    }
+
+    #panel button {
+      padding: 6px 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #panel input[type="number"] {
+      width: 72px;
+      padding: 4px 6px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    #panel input[type="range"] {
+      width: 100%;
+    }
+
+    #viewer-container {
+      flex: 1;
+      background: #000;
+    }
+
+    #three-root {
+      width: 100%;
+      height: 100%;
+    }
+
+    .prop-box {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f9f9f9;
+      padding: 6px 8px;
+      margin-top: 10px;
+    }
+    .prop-box h4 {
+      margin: 0 0 6px 0;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .prop-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .prop-table td {
+      padding: 2px 4px;
+    }
+    .prop-table .label {
+      width: 40px;
+    }
+    .prop-table .value {
+      text-align: right;
+    }
+    .fault-grid {
+      display: grid;
+      grid-template-columns: 54px 1fr auto;
+      gap: 6px 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .compass-widget {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      border: 2px solid #999;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at center, #ffffff 0 34%, #f2f2f2 35% 100%);
+      justify-self: start;
+      cursor: crosshair;
+      user-select: none;
+      touch-action: none;
+    }
+    .compass-widget::before,
+    .compass-widget::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      background: rgba(0, 0, 0, 0.12);
+      transform: translate(-50%, -50%);
+    }
+    .compass-widget::before {
+      width: 2px;
+      height: 84px;
+    }
+    .compass-widget::after {
+      width: 84px;
+      height: 2px;
+    }
+    .compass-label {
+      position: absolute;
+      font-size: 10px;
+      font-weight: 700;
+      color: #555;
+      pointer-events: none;
+    }
+    .compass-label.n { top: 4px; left: 50%; transform: translateX(-50%); }
+    .compass-label.e { top: 50%; right: 6px; transform: translateY(-50%); }
+    .compass-label.s { bottom: 4px; left: 50%; transform: translateX(-50%); }
+    .compass-label.w { top: 50%; left: 6px; transform: translateY(-50%); }
+    .compass-pointer {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+    }
+    .compass-pointer::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: -5px;
+      width: 38px;
+      height: 10px;
+      clip-path: polygon(0 50%, 72% 0, 100% 50%, 72% 100%);
+      background: #cc2b2b;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+    }
+    .compass-center-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      background: #333;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .fault-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .fault-status {
+      margin-top: 8px;
+      min-height: 16px;
+      font-size: 12px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="main-container">
+    <!-- 左パネル -->
+    <div id="panel">
+      <button id="connect-btn">connect</button>
+      <div id="viewer-init-status" style="margin-top:8px;font-size:12px;color:#444;">
+        Viewer: loading modules...
+      </div>
+
+      <div style="margin-top: 8px;">
+        <label for="ws-uri-input"><strong>WebSocket URI</strong></label><br>
+        <input
+          id="ws-uri-input"
+          type="text"
+          style="width: 100%;"
+          value="ws://127.0.0.1:8765"
+        >
+      </div>
+
+      <div style="margin-top: 8px;">
+        <label for="drone-profile-select"><strong>Drone model</strong></label><br>
+        <select id="drone-profile-select" style="width: 100%;">
+          <option value="">Scene default</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 8px;">
+        <label for="environment-mode-select"><strong>3D environment</strong></label><br>
+        <select id="environment-mode-select" style="width: 100%;">
+          <option value="physics">Physics (terrain + collision boxes)</option>
+          <option value="visual">Visual (optional GLB)</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 8px;">
+        <label for="drone-select"><strong>Drone</strong></label><br>
+        <select id="drone-select" style="width: 100%;"></select>
+      </div>
+
+      <div style="margin-top: 4px;">
+        <label>
+          <input type="checkbox" id="follow-checkbox" checked>
+          Follow selected
+        </label>
+      </div>
+
+      <div class="prop-box">
+        <h4>Drone State (debug)</h4>
+        <table class="prop-table">
+          <tr><td class="label">x:</td><td class="value" id="prop-x"></td></tr>
+          <tr><td class="label">y:</td><td class="value" id="prop-y"></td></tr>
+          <tr><td class="label">z:</td><td class="value" id="prop-z"></td></tr>
+          <tr><td class="label">pwm0:</td><td class="value" id="prop-pwm-0"></td></tr>
+          <tr><td class="label">pwm1:</td><td class="value" id="prop-pwm-1"></td></tr>
+          <tr><td class="label">pwm2:</td><td class="value" id="prop-pwm-2"></td></tr>
+          <tr><td class="label">pwm3:</td><td class="value" id="prop-pwm-3"></td></tr>
+        </table>
+      </div>
+
+      <div class="prop-box">
+        <h4>Rotor Fault Injection</h4>
+        <div class="fault-grid">
+          <label for="rotor-scale-0">Rotor 0</label>
+          <input id="rotor-scale-slider-0" type="range" min="0" max="1" step="0.1" value="1.0">
+          <input id="rotor-scale-0" type="number" min="0" max="1" step="0.1" value="1.0">
+
+          <label for="rotor-scale-1">Rotor 1</label>
+          <input id="rotor-scale-slider-1" type="range" min="0" max="1" step="0.1" value="1.0">
+          <input id="rotor-scale-1" type="number" min="0" max="1" step="0.1" value="1.0">
+
+          <label for="rotor-scale-2">Rotor 2</label>
+          <input id="rotor-scale-slider-2" type="range" min="0" max="1" step="0.1" value="1.0">
+          <input id="rotor-scale-2" type="number" min="0" max="1" step="0.1" value="1.0">
+
+          <label for="rotor-scale-3">Rotor 3</label>
+          <input id="rotor-scale-slider-3" type="range" min="0" max="1" step="0.1" value="1.0">
+          <input id="rotor-scale-3" type="number" min="0" max="1" step="0.1" value="1.0">
+        </div>
+        <div class="fault-actions">
+          <button id="fault-send-btn" type="button">send</button>
+          <button id="fault-reset-btn" type="button">reset</button>
+        </div>
+        <div id="fault-status" class="fault-status"></div>
+      </div>
+
+      <div class="prop-box">
+        <h4>Wind Disturbance (ROS)</h4>
+        <div class="fault-grid">
+          <label for="wind-heading-deg">Heading</label>
+          <div id="wind-heading-compass" class="compass-widget" aria-label="Wind heading compass">
+            <span class="compass-label n">+X</span>
+            <span class="compass-label e">-Y</span>
+            <span class="compass-label s">-X</span>
+            <span class="compass-label w">+Y</span>
+            <div id="wind-heading-pointer" class="compass-pointer"></div>
+            <div class="compass-center-dot"></div>
+          </div>
+          <input id="wind-heading-deg" type="number" min="0" max="360" step="5" value="0">
+
+          <label for="wind-speed-mps">Speed</label>
+          <input id="wind-speed-slider" type="range" min="0" max="20" step="0.5" value="0">
+          <input id="wind-speed-mps" type="number" min="0" max="20" step="0.5" value="0.0">
+        </div>
+        <div id="wind-status" class="fault-status"></div>
+      </div>
+    </div>
+
+    <!-- 右：Three.js -->
+    <div id="viewer-container">
+      <div id="three-root"></div>
+    </div>
+  </div>
+
+  <script>
+    function showViewerBootError(message) {
+      const status = document.getElementById('viewer-init-status');
+      if (!status) return;
+      status.textContent = `Viewer initialization error: ${message}`;
+      status.style.color = '#b00020';
+    }
+    window.addEventListener('error', (event) => {
+      showViewerBootError(event.message || 'module load failed');
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason;
+      showViewerBootError(reason?.message || String(reason || 'promise rejected'));
+    });
+  </script>
+
+  <!-- Native import map. Three.js is vendored for deterministic/offline startup. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/thirdparty/three/build/three.module.js",
+      "three/addons/": "/thirdparty/three/examples/jsm/"
+    }
+  }
+  </script>
+
+  <!-- UI配線専用モジュール -->
+  <script type="module">
+    let createDroneViewer;
+    let loadViewerConfig;
+    let bootStage = 'rendering core';
+    try {
+      document.getElementById('viewer-init-status').textContent =
+        `Viewer: loading ${bootStage}...`;
+      await import("./src/app.js?v=r4-20260809-1");
+      bootStage = 'viewer API';
+      document.getElementById('viewer-init-status').textContent =
+        `Viewer: loading ${bootStage}...`;
+      const [viewerModule, configModule] = await Promise.all([
+        import("./src/public/drone_viewer.js?v=r4-20260809-1"),
+        import("./src/viewer_config_loader.js?v=r4-20260809-1"),
+      ]);
+      createDroneViewer = viewerModule.createDroneViewer;
+      loadViewerConfig = configModule.loadViewerConfig;
+    } catch (error) {
+      showViewerBootError(`${bootStage}: ${error?.message || String(error)}`);
+      throw error;
+    }
+
+    const viewer = createDroneViewer();
+    window.droneViewer = viewer;
+    // Debug helper for browser console inspection.
+    window.__hakoniwaViewer = viewer;
+
+    function getDronesFromViewer() {
+      return viewer.getDrones();
+    }
+
+    function initializeViewerPage() {
+      const connectBtn = document.getElementById('connect-btn');
+      const viewerInitStatus = document.getElementById('viewer-init-status');
+      const droneSelect = document.getElementById("drone-select");
+      const followCheckbox = document.getElementById("follow-checkbox");
+      const wsUriInput = document.getElementById('ws-uri-input');
+      const droneProfileSelect = document.getElementById('drone-profile-select');
+      const environmentModeSelect = document.getElementById('environment-mode-select');
+      const stateX = document.getElementById('prop-x');
+      const stateY = document.getElementById('prop-y');
+      const stateZ = document.getElementById('prop-z');
+      const statePwmDuty = [
+        document.getElementById('prop-pwm-0'),
+        document.getElementById('prop-pwm-1'),
+        document.getElementById('prop-pwm-2'),
+        document.getElementById('prop-pwm-3'),
+      ];
+      const rotorScaleInputs = [
+        document.getElementById('rotor-scale-0'),
+        document.getElementById('rotor-scale-1'),
+        document.getElementById('rotor-scale-2'),
+        document.getElementById('rotor-scale-3'),
+      ];
+      const rotorScaleSliders = [
+        document.getElementById('rotor-scale-slider-0'),
+        document.getElementById('rotor-scale-slider-1'),
+        document.getElementById('rotor-scale-slider-2'),
+        document.getElementById('rotor-scale-slider-3'),
+      ];
+      const faultSendBtn = document.getElementById('fault-send-btn');
+      const faultResetBtn = document.getElementById('fault-reset-btn');
+      const faultStatus = document.getElementById('fault-status');
+      const windHeadingCompass = document.getElementById('wind-heading-compass');
+      const windHeadingPointer = document.getElementById('wind-heading-pointer');
+      const windHeadingInput = document.getElementById('wind-heading-deg');
+      const windSpeedInput = document.getElementById('wind-speed-mps');
+      const windSpeedSlider = document.getElementById('wind-speed-slider');
+      const windStatus = document.getElementById('wind-status');
+
+      function clampScaleValue(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          return 1.0;
+        }
+        return Math.max(0.0, Math.min(1.0, num));
+      }
+
+      function getRotorScalesFromInputs() {
+        return rotorScaleInputs.map((input) => {
+          return clampScaleValue(input?.value ?? 1.0);
+        });
+      }
+
+      function setRotorScalesToInputs(scales = []) {
+        rotorScaleInputs.forEach((input, index) => {
+          if (!input) return;
+          const value = clampScaleValue(scales[index] ?? 1.0);
+          input.value = value.toFixed(1);
+          if (rotorScaleSliders[index]) {
+            rotorScaleSliders[index].value = value.toFixed(1);
+          }
+        });
+      }
+
+      function setFaultStatus(message, isError = false) {
+        if (!faultStatus) return;
+        faultStatus.textContent = message;
+        faultStatus.style.color = isError ? "#b00020" : "#333";
+      }
+
+      function clampHeadingDeg(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          return 0.0;
+        }
+        let normalized = num % 360.0;
+        if (normalized < 0) {
+          normalized += 360.0;
+        }
+        return normalized;
+      }
+
+      function clampWindSpeed(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          return 0.0;
+        }
+        return Math.max(0.0, Math.min(20.0, num));
+      }
+
+      function getWindFromInputs() {
+        return {
+          headingDeg: clampHeadingDeg(windHeadingInput?.value ?? 0.0),
+          speedMps: clampWindSpeed(windSpeedInput?.value ?? 0.0),
+        };
+      }
+
+      function setWindToInputs({ headingDeg = 0.0, speedMps = 0.0 } = {}) {
+        const heading = clampHeadingDeg(headingDeg);
+        const speed = clampWindSpeed(speedMps);
+        if (windHeadingInput) windHeadingInput.value = heading.toFixed(0);
+        if (windSpeedInput) windSpeedInput.value = speed.toFixed(1);
+        if (windSpeedSlider) windSpeedSlider.value = speed.toFixed(1);
+        if (windHeadingPointer) {
+          windHeadingPointer.style.transform = `translate(-50%, -50%) rotate(${-90 - heading}deg)`;
+        }
+      }
+
+      function setWindStatus(message, isError = false) {
+        if (!windStatus) return;
+        windStatus.textContent = message;
+        windStatus.style.color = isError ? "#b00020" : "#333";
+      }
+
+      async function sendCurrentRotorScales() {
+        const scales = getRotorScalesFromInputs();
+        setRotorScalesToInputs(scales);
+        const wind = getWindFromInputs();
+        setWindToInputs(wind);
+        try {
+          viewer.setWind(wind);
+          const ok = await viewer.sendRotorFaultScales(scales);
+          if (ok) {
+            setFaultStatus(`sent [${scales.map((v) => v.toFixed(1)).join(", ")}]`);
+            setWindStatus(`sent heading=${wind.headingDeg.toFixed(0)} speed=${wind.speedMps.toFixed(1)}`);
+          } else {
+            setFaultStatus("send failed", true);
+            setWindStatus("send failed", true);
+          }
+          return ok;
+        } catch (e) {
+          console.error(e);
+          setFaultStatus("send error", true);
+          setWindStatus("send error", true);
+          return false;
+        }
+      }
+
+      function bindRotorScaleControls() {
+        rotorScaleInputs.forEach((input, index) => {
+          const slider = rotorScaleSliders[index];
+          if (input) {
+            input.addEventListener("input", () => {
+              const value = clampScaleValue(input.value);
+              input.value = value.toFixed(1);
+              if (slider) {
+                slider.value = value.toFixed(1);
+              }
+              viewer.setRotorFaultScale(index, value);
+            });
+            input.addEventListener("change", async () => {
+              await sendCurrentRotorScales();
+            });
+          }
+          if (slider) {
+            slider.addEventListener("input", () => {
+              const value = clampScaleValue(slider.value);
+              slider.value = value.toFixed(1);
+              if (input) {
+                input.value = value.toFixed(1);
+              }
+              viewer.setRotorFaultScale(index, value);
+            });
+            slider.addEventListener("change", async () => {
+              await sendCurrentRotorScales();
+            });
+          }
+        });
+      }
+
+      function bindWindControls() {
+        let compassDragging = false;
+
+        function readHeadingFromCompassEvent(event) {
+          if (!windHeadingCompass) {
+            return 0.0;
+          }
+          const rect = windHeadingCompass.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = event.clientX - cx;
+          const dy = cy - event.clientY;
+          const deg = Math.atan2(-dx, dy) * 180.0 / Math.PI;
+          return clampHeadingDeg(deg);
+        }
+
+        function applyCompassHeading(heading) {
+          const normalized = clampHeadingDeg(heading);
+          if (windHeadingInput) {
+            windHeadingInput.value = normalized.toFixed(0);
+          }
+          viewer.setWindHeadingDeg(normalized);
+          setWindToInputs({
+            headingDeg: normalized,
+            speedMps: getWindFromInputs().speedMps,
+          });
+        }
+
+        if (windHeadingCompass) {
+          windHeadingCompass.addEventListener("mousedown", (event) => {
+            compassDragging = true;
+            applyCompassHeading(readHeadingFromCompassEvent(event));
+          });
+          window.addEventListener("mousemove", (event) => {
+            if (!compassDragging) {
+              return;
+            }
+            applyCompassHeading(readHeadingFromCompassEvent(event));
+          });
+          window.addEventListener("mouseup", async () => {
+            if (!compassDragging) {
+              return;
+            }
+            compassDragging = false;
+            await sendCurrentRotorScales();
+          });
+          windHeadingCompass.addEventListener("click", async (event) => {
+            applyCompassHeading(readHeadingFromCompassEvent(event));
+            await sendCurrentRotorScales();
+          });
+        }
+
+        if (windHeadingInput) {
+          windHeadingInput.addEventListener("input", () => {
+            const heading = clampHeadingDeg(windHeadingInput.value);
+            windHeadingInput.value = heading.toFixed(0);
+            viewer.setWindHeadingDeg(heading);
+            setWindToInputs({
+              headingDeg: heading,
+              speedMps: getWindFromInputs().speedMps,
+            });
+          });
+          windHeadingInput.addEventListener("change", async () => {
+            await sendCurrentRotorScales();
+          });
+        }
+        if (windSpeedInput) {
+          windSpeedInput.addEventListener("input", () => {
+            const speed = clampWindSpeed(windSpeedInput.value);
+            windSpeedInput.value = speed.toFixed(1);
+            if (windSpeedSlider) {
+              windSpeedSlider.value = speed.toFixed(1);
+            }
+            viewer.setWindSpeedMps(speed);
+          });
+          windSpeedInput.addEventListener("change", async () => {
+            await sendCurrentRotorScales();
+          });
+        }
+        if (windSpeedSlider) {
+          windSpeedSlider.addEventListener("input", () => {
+            const speed = clampWindSpeed(windSpeedSlider.value);
+            windSpeedSlider.value = speed.toFixed(1);
+            if (windSpeedInput) {
+              windSpeedInput.value = speed.toFixed(1);
+            }
+            viewer.setWindSpeedMps(speed);
+          });
+          windSpeedSlider.addEventListener("change", async () => {
+            await sendCurrentRotorScales();
+          });
+        }
+      }
+
+      function populateDroneSelect() {
+        const drones = getDronesFromViewer();
+
+        // 一旦クリア
+        droneSelect.innerHTML = "";
+
+        drones.forEach((drone, index) => {
+          const opt = document.createElement("option");
+
+          // Drone に name があれば使う
+          // なければ ID (droneId) を使う
+          opt.value = drone.droneId ?? index;
+          opt.textContent = drone.name ?? `${drone.droneId}`;
+
+          droneSelect.appendChild(opt);
+        });
+        if (droneSelect.options.length > 0 && droneSelect.selectedIndex < 0) {
+          droneSelect.selectedIndex = 0;
+        }
+      }
+      function applyFollowSelectedIfEnabled() {
+        if (!followCheckbox?.checked) {
+          return;
+        }
+        const selectedId = droneSelect?.value;
+        if (!selectedId) return;
+        viewer.focusDroneById(selectedId);
+      }
+      // --- 選択中ドローンを取得 ---
+      function getSelectedDrone() {
+        const drones = getDronesFromViewer();
+        if (!drones.length) return null;
+
+        const selId = droneSelect.value;
+        if (!selId) return drones[0];
+
+        const found = drones.find(d => String(d.droneId) === selId);
+        return found || drones[0];
+      }
+      // --- 状態パネルを定期更新 ---
+      function updateDroneStatePanel() {
+        const d = getSelectedDrone();
+        if (!d || !d.latestPose || !d.latestPose.rosPos) {
+          // データがまだ来てないときは空にしておく
+          stateX.textContent = "";
+          stateY.textContent = "";
+          stateZ.textContent = "";
+          statePwmDuty.forEach((el) => { if (el) el.textContent = ""; });
+          return;
+        }
+
+        const [x, y, z] = d.latestPose.rosPos;
+        stateX.textContent = x.toFixed(2);
+        stateY.textContent = y.toFixed(2);
+        stateZ.textContent = z.toFixed(2);
+        statePwmDuty.forEach((el, index) => {
+          if (!el) return;
+          const directValue = d.pwmDuty?.[index];
+          const fallbackValue = Number.isFinite(d.rotorSpeeds?.[index])
+            ? d.rotorSpeeds[index] / 200.0
+            : undefined;
+          const value = Number.isFinite(directValue) ? directValue : fallbackValue;
+          el.textContent = Number.isFinite(value) ? value.toFixed(3) : "n/a";
+        });
+      }
+
+      setRotorScalesToInputs(viewer.getRotorFaultScales());
+      setWindToInputs(viewer.getWind());
+      bindRotorScaleControls();
+      bindWindControls();
+      setFaultStatus("not sent");
+      setWindStatus("not sent");
+
+      if (!connectBtn) {
+        console.warn("connect-btn not found");
+        return;
+      }
+      let loadedViewerConfig = null;
+      let statePanelIntervalMsec = 100;
+      const pageParams = new URLSearchParams(window.location.search);
+      if (environmentModeSelect) {
+        environmentModeSelect.value = pageParams.get('environmentMode') ?? 'physics';
+      }
+      function reloadWithSelection() {
+        const url = new URL(window.location.href);
+        const profileId = droneProfileSelect?.value ?? '';
+        if (profileId) url.searchParams.set('droneProfile', profileId);
+        else url.searchParams.delete('droneProfile');
+        url.searchParams.set('environmentMode', environmentModeSelect?.value ?? 'physics');
+        window.location.assign(url.toString());
+      }
+      droneProfileSelect?.addEventListener('change', reloadWithSelection);
+      environmentModeSelect?.addEventListener('change', reloadWithSelection);
+      if (viewerInitStatus) viewerInitStatus.textContent = 'Viewer: loading config...';
+      loadViewerConfig()
+        .then(async ({ configUrl, config }) => {
+          loadedViewerConfig = config;
+          statePanelIntervalMsec = config.ui?.statePanelIntervalMsec ?? 100;
+          viewer.configure(config);
+          if (wsUriInput) {
+            wsUriInput.value = config.pdu.wsUri;
+          }
+          const catalog = await viewer.listDroneProfiles();
+          if (droneProfileSelect && catalog.profiles.length > 0) {
+            droneProfileSelect.innerHTML = '';
+            for (const profile of catalog.profiles) {
+              const option = document.createElement('option');
+              option.value = profile.id;
+              option.textContent = profile.label;
+              option.title = profile.note || '';
+              droneProfileSelect.appendChild(option);
+            }
+            droneProfileSelect.value = pageParams.get('droneProfile')
+              ?? catalog.defaultProfileId
+              ?? catalog.profiles[0].id;
+          }
+          await viewer.initialize({
+            droneProfileId: droneProfileSelect?.value || null,
+            environmentMode: environmentModeSelect?.value || 'physics',
+          });
+          populateDroneSelect();
+          if (viewerInitStatus) {
+            const terrain = viewer.getEnvironmentDiagnostics()
+              .find((item) => item.type === 'terrain-grid');
+            const buildings = viewer.getEnvironmentDiagnostics()
+              .find((item) => item.type === 'mjcf');
+            const details = [];
+            if (terrain) details.push(`${terrain.vertexCount} terrain vertices`);
+            if (buildings) details.push(`${buildings.buildingCount} collision boxes`);
+            viewerInitStatus.textContent = details.length
+              ? `Viewer: ready (${details.join(' / ')})`
+              : 'Viewer: ready';
+          }
+          console.log("[DroneViewer] loaded viewer config:", configUrl, config);
+        })
+        .catch((e) => {
+          console.error(e);
+          showViewerBootError(e?.message || String(e));
+        });
+
+      connectBtn.addEventListener('click', async () => {
+        connectBtn.disabled = true;
+        connectBtn.textContent = "connecting...";
+
+        try {
+          const defaultWsUri = loadedViewerConfig?.pdu?.wsUri ?? "ws://127.0.0.1:8765";
+          const wsUri = (wsUriInput?.value || "").trim() || defaultWsUri;
+          const ok = await viewer.connectPdu({
+            wsUri: wsUri,
+          });
+          if (ok) {
+            await viewer.initDronePdu();
+
+            populateDroneSelect();
+            applyFollowSelectedIfEnabled();
+            // 100msごとに状態更新
+            setInterval(updateDroneStatePanel, statePanelIntervalMsec);
+
+            connectBtn.textContent = "connected";
+          } else {
+            connectBtn.textContent = "connect failed";
+            connectBtn.disabled = false;
+          }
+        } catch (e) {
+          console.error(e);
+          connectBtn.textContent = "error";
+          connectBtn.disabled = false;
+        }
+
+      });
+
+      if (droneSelect) {
+        droneSelect.addEventListener("change", () => {
+          applyFollowSelectedIfEnabled();
+        });
+      }
+      if (followCheckbox) {
+        followCheckbox.addEventListener("change", () => {
+          const enabled = !!followCheckbox.checked;
+          viewer.setFollowSelectedEnabled(enabled);
+          if (enabled) {
+            applyFollowSelectedIfEnabled();
+          }
+        });
+      }
+
+      if (faultSendBtn) {
+        faultSendBtn.addEventListener("click", async () => {
+          setFaultStatus("sending...");
+          await sendCurrentRotorScales();
+        });
+      }
+
+      if (faultResetBtn) {
+        faultResetBtn.addEventListener("click", async () => {
+          const resetScales = viewer.resetRotorFaultScales();
+          setRotorScalesToInputs(resetScales);
+          setFaultStatus("sending nominal...");
+          await sendCurrentRotorScales();
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeViewerPage, { once: true });
+    } else {
+      initializeViewerPage();
+    }
+  </script>
+</body>
+</html>

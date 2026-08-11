@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "legacy_drone_type",
+      "path": "pdudef-legacy-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "Drone",
+      "pdutypes_id": "legacy_drone_type"
+    }
+  ]
+}

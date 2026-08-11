@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "format": "compact",
+  "environmentMode": "physics",
+  "environments": [
+    {
+      "name": "terrain-fixture",
+      "type": "terrain-grid",
+      "modes": ["physics", "visual"],
+      "terrainGridPath": "../tests/fixtures/terrain-grid-visual-3x3.json",
+      "material": {
+        "mode": "elevation",
+        "wireframe": false
+      },
+      "debug": {
+        "grid": true,
+        "gridDivisions": 4,
+        "axes": true,
+        "axesSizeM": 1.0
+      }
+    },
+    {
+      "name": "building-fixture",
+      "type": "model",
+      "kind": "mjcf",
+      "modes": ["physics"],
+      "model": "../tests/fixtures/buildings-visual.xml",
+      "material": {
+        "mode": "collision-debug",
+        "color": "#4b9bd6",
+        "opacity": 0.38,
+        "depthWrite": false
+      }
+    }
+  ],
+  "main_camera": {
+    "fov": 60,
+    "near": 0.1,
+    "far": 1000,
+    "initialMode": "fixed",
+    "position": [-12.0, -12.0, 8.0],
+    "target": "Drone"
+  },
+  "defaultDroneProfile": "base",
+  "droneProfiles": {
+    "base": {
+      "label": "Base quadrotor (bundled)",
+      "droneTypesPath": "./drone_types-quadrotor_base.json",
+      "droneType": "quadrotor_base"
+    },
+    "dji-local": {
+      "label": "DJI model (local GLB required)",
+      "droneTypesPath": "./drone_types-quadrotor_dji.json",
+      "droneType": "quadrotor_dji",
+      "optionalAssets": true,
+      "note": "Place drone.glb, prop-1.glb, prop-2.glb and camera.glb under assets/local_models/."
+    }
+  },
+  "droneTypesPath": "./drone_types-quadrotor_base.json",
+  "drones": [
+    {
+      "name": "Drone",
+      "type": "quadrotor_base",
+      "pos": [0.0, 0.0, 3.0],
+      "hpr": [0.0, 0.0, 0.0]
+    }
+  ]
+}

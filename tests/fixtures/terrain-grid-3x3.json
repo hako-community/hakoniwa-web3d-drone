@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "frame": "mujoco_x_north_y_minus_east_z_up",
+  "rows": 3,
+  "columns": 3,
+  "xMinM": -1.0,
+  "xMaxM": 1.0,
+  "yMinM": -1.0,
+  "yMaxM": 1.0,
+  "zBaselineM": 100.0,
+  "modelHeightsM": [
+    0.0, 1.0, 2.0,
+    3.0, 4.0, 5.0,
+    6.0, 7.0, 8.0
+  ]
+}
