@@ -1,0 +1,84 @@
+{
+  "origin_01": {
+    "wideVisualScale": 120,
+    "localVisualScale": 12,
+    "model": {
+      "model_path": "../assets/models/origin-01.glb",
+      "pos": [0.0, 0.0, 0.0],
+      "hpr": [0.0, 0.0, 180.0],
+      "scale": 0.6,
+      "hiddenNodes": ["Dynamics"]
+    },
+    "rotors": [
+      {
+        "name": "origin_rotor1",
+        "model": {
+          "model_path": "../assets/models/propeller_origin_01.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.216
+        },
+        "spinDirection": "cw",
+        "pos": [0.5094, -0.4986, 0.3264],
+        "hpr": [0.0, 0.0, 0.0]
+      },
+      {
+        "name": "origin_rotor2",
+        "model": {
+          "model_path": "../assets/models/propeller_origin_01.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.216
+        },
+        "spinDirection": "ccw",
+        "pos": [-0.5070, 0.5022, 0.3264],
+        "hpr": [0.0, 0.0, 0.0]
+      },
+      {
+        "name": "origin_rotor3",
+        "model": {
+          "model_path": "../assets/models/propeller_origin_01.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.216
+        },
+        "spinDirection": "cw",
+        "pos": [0.5094, 0.5022, 0.3264],
+        "hpr": [0.0, 0.0, 0.0]
+      },
+      {
+        "name": "origin_rotor4",
+        "model": {
+          "model_path": "../assets/models/propeller_origin_01.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.216
+        },
+        "spinDirection": "ccw",
+        "pos": [-0.5070, -0.4986, 0.3264],
+        "hpr": [0.0, 0.0, 0.0]
+      }
+    ],
+    "cameras": [
+      {
+        "name": "front_camera",
+        "pos": [0.32, 0.0, 0.02],
+        "hpr": [0.0, 0.0, 0.0],
+        "fov": 90,
+        "near": 0.1,
+        "far": 3000,
+        "window": {
+          "x": 0.69,
+          "y": 0.69,
+          "width": 0.3,
+          "height": 0.3
+        },
+        "model": {
+          "model_path": "../assets/models/base-drone-camera.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 180.0]
+        }
+      }
+    ]
+  }
+}

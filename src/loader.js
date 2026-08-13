@@ -97,6 +97,16 @@ function normalizeEnvironmentModelPaths(cfg, sceneConfigUrl) {
     if (env && typeof env.terrainGridPath === "string") {
       env.terrainGridPath = resolveUrlFromBase(env.terrainGridPath, sceneConfigUrl);
     }
+    if (env && typeof env.lod1Path === "string") {
+      env.lod1Path = resolveUrlFromBase(env.lod1Path, sceneConfigUrl);
+    }
+    if (env && Array.isArray(env.sources)) {
+      for (const source of env.sources) {
+        if (source && typeof source.url === "string") {
+          source.url = resolveUrlFromBase(source.url, sceneConfigUrl);
+        }
+      }
+    }
   }
 }
 

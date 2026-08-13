@@ -1,5 +1,5 @@
 import { IStateSource } from "./i_state_source.js";
-import { Hakoniwa } from "../hakoniwa/hakoniwa-pdu.js";
+import { Hakoniwa } from "../hakoniwa/hakoniwa-pdu.js?v=r8-core-20260811-5";
 import { pduToJs_DroneVisualStateArray } from "../../thirdparty/hakoniwa-pdu-javascript/src/pdu_msgs/hako_msgs/pdu_conv_DroneVisualStateArray.js";
 import { validateCompactPdudef, loadPdutypeTable, collectChannelsByPdutype } from "./compact_pdudef_loader.js";
 
@@ -15,6 +15,11 @@ export class FleetStateSource extends IStateSource {
     this.stateByDrone = new Map();
     this.visualStateChannels = [];
     this.declared = false;
+    this.lastSequenceId = 0;
+    this.lastValidCount = 0;
+    this.lastPacketReceivedAtMilliseconds = null;
+    this.packetCount = 0;
+    this.lastError = null;
   }
 
   async initialize({ pduDefPath } = {}) {
@@ -25,7 +30,7 @@ export class FleetStateSource extends IStateSource {
     if (!pduDefPath) {
       throw new Error("[FleetStateSource] pduDefPath is required.");
     }
-    const res = await fetch(pduDefPath);
+    const res = await fetch(pduDefPath, { cache: "no-store" });
     if (!res.ok) {
       throw new Error(`[FleetStateSource] failed to load pdudef: ${pduDefPath}`);
     }
@@ -119,6 +124,11 @@ export class FleetStateSource extends IStateSource {
       return;
     }
     const startIndex = Math.trunc(rawStartIndex);
+    this.lastSequenceId = Math.max(this.lastSequenceId, Math.trunc(sequenceId));
+    this.lastValidCount = validCount;
+    this.lastPacketReceivedAtMilliseconds = performance.now();
+    this.packetCount += 1;
+    this.lastError = null;
 
     for (let i = 0; i < validCount; i++) {
       const droneIndex = startIndex + i;
@@ -136,8 +146,13 @@ export class FleetStateSource extends IStateSource {
       for (const ch of this.visualStateChannels) {
         const buf = pdu.read_pdu_raw_data(ch.robotName, ch.pduName);
         if (!buf) continue;
-        const packet = pduToJs_DroneVisualStateArray(buf);
-        this.applyPacket(packet);
+        try {
+          const packet = pduToJs_DroneVisualStateArray(buf);
+          this.applyPacket(packet);
+        } catch (error) {
+          this.lastError = error?.message || String(error);
+          console.error(`[FleetStateSource] decode failed for ${ch.robotName}/${ch.pduName}:`, error);
+        }
       }
     });
   }
@@ -154,9 +169,27 @@ export class FleetStateSource extends IStateSource {
     };
   }
 
+  getDiagnostics() {
+    return {
+      mode: 'fleets',
+      sequenceId: this.lastSequenceId,
+      validCount: this.lastValidCount,
+      boundDroneCount: this.boundDroneIds.length,
+      stateCount: this.stateByDrone.size,
+      packetCount: this.packetCount,
+      lastError: this.lastError,
+      lastPacketReceivedAtMilliseconds: this.lastPacketReceivedAtMilliseconds,
+    };
+  }
+
   async dispose() {
     this.boundDroneIds = [];
     this.stateByDrone.clear();
     this.declared = false;
+    this.lastSequenceId = 0;
+    this.lastValidCount = 0;
+    this.lastPacketReceivedAtMilliseconds = null;
+    this.packetCount = 0;
+    this.lastError = null;
   }
 }

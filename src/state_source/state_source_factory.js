@@ -1,5 +1,5 @@
-import { LegacyStateSource } from "./legacy_state_source.js";
-import { FleetStateSource } from "./fleet_state_source.js";
+import { LegacyStateSource } from "./legacy_state_source.js?v=r8-core-20260811-5";
+import { FleetStateSource } from "./fleet_state_source.js?v=r8-core-20260811-5";
 
 export class StateSourceFactory {
   static create(config) {

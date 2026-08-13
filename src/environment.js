@@ -3,6 +3,8 @@ import * as THREE from "three";
 import { RenderEntity } from "./render_entity.js";
 import { createInstancedBuildingEnvironmentFromMjcfXml } from "./mjcf_building.js?v=r3-20260809-2";
 import { buildTerrainGridEnvironment } from "./terrain_environment.js?v=r2-20260809-6";
+import { buildLod1CityEnvironment } from "./lod1_city_environment.js?v=phase-e-20260812-1";
+import { buildPlateau3DTilesEnvironment } from "./plateau_3dtiles_environment.js?v=phase-e-20260813-10";
 
 /**
  * 単一 Environment を構築する
@@ -31,6 +33,19 @@ export async function buildEnvironment(scene, loader, envCfg) {
     const terrain = await buildTerrainGridEnvironment(envCfg);
     ent.setAttachment(terrain.object3d);
     ent.environmentDiagnostics = terrain.diagnostics;
+  } else if (environmentType === "lod1-city") {
+    console.log(`Loading PLATEAU LOD1 city environment: ${envCfg.lod1Path}`);
+    const city = await buildLod1CityEnvironment(envCfg);
+    ent.setAttachment(city.object3d);
+    ent.environmentDiagnostics = city.diagnostics;
+  } else if (environmentType === "plateau-3dtiles") {
+    console.log(`Loading streamed PLATEAU LOD1 3D Tiles environment: ${envCfg.name}`);
+    const city = await buildPlateau3DTilesEnvironment(envCfg);
+    ent.setAttachment(city.object3d);
+    ent.environmentDiagnostics = city.diagnostics;
+    ent.bindViewer = city.bindViewer;
+    ent.resizeViewer = city.resize;
+    ent.updateEnvironment = city.update;
   } else if (isXml) {
     console.log(`Loading MJCF environment model: ${modelPath}`);
     // MJCF から建物群をロード
@@ -131,6 +146,7 @@ export async function buildEnvironment(scene, loader, envCfg) {
   }
 
   // シーンに追加
+  ent.environmentScopes = Array.isArray(envCfg.scopes) ? [...envCfg.scopes] : [];
   scene.add(ent.object3d);
   return ent;
 }

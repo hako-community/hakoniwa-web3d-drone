@@ -1,11 +1,13 @@
-import { main, getDrones, getEnvironmentDiagnostics, focusDroneById, getFocusedDroneId, resizeViewer, setBeforeDronesUpdateHook, setViewerRuntimeOptions, setCameraFollowEnabled } from "../app.js?v=r4-20260809-1";
+import { main, getDrones, getEnvironmentDiagnostics, focusDroneById, getFocusedDroneId, resizeViewer, setBeforeDronesUpdateHook, setViewerRuntimeOptions, setCameraFollowEnabled, setEnvironmentScope, getEnvironmentScope, setOperationalSelectedDroneId } from "../app.js?v=phase-e-20260813-13";
 import { loadSceneProfileCatalog } from "../loader.js";
 import { DroneRenderManager } from "./drone_render_manager.js";
 import { FaultInjectionState } from "../fault_injection/fault_injection_state.js";
 import { TERRAIN_GRID_ENVIRONMENT_VERSION } from "../terrain_environment.js?v=r2-20260809-6";
 import { MJCF_BUILDING_GEOMETRY_VERSION } from "../mjcf_building.js?v=r3-20260809-2";
+import { LOD1_CITY_ENVIRONMENT_VERSION } from "../lod1_city_environment.js?v=phase-e-20260812-1";
+import { PLATEAU_3DTILES_ENVIRONMENT_VERSION } from "../plateau_3dtiles_environment.js?v=phase-e-20260813-10";
 
-export { TERRAIN_GRID_ENVIRONMENT_VERSION, MJCF_BUILDING_GEOMETRY_VERSION };
+export { TERRAIN_GRID_ENVIRONMENT_VERSION, MJCF_BUILDING_GEOMETRY_VERSION, LOD1_CITY_ENVIRONMENT_VERSION, PLATEAU_3DTILES_ENVIRONMENT_VERSION };
 export const SELECTION_SYNC_API_VERSION = 1;
 
 function deepClone(obj) {
@@ -81,6 +83,7 @@ export class DroneViewer {
     this.disturbanceWriter = null;
     this.pduRuntime = null;
     this.syncHookInstalled = false;
+    this.syncInFlight = false;
     this.runtimeSelection = null;
     if (config && Object.keys(config).length > 0) {
       this.configure(config);
@@ -99,9 +102,9 @@ export class DroneViewer {
   async loadPduRuntime() {
     if (this.pduRuntime) return this.pduRuntime;
     const [hakoniwaModule, factoryModule, writerModule] = await Promise.all([
-      import("../hakoniwa/hakoniwa-pdu.js?v=r2-20260809-6"),
-      import("../state_source/state_source_factory.js?v=r2-20260809-6"),
-      import("../fault_injection/disturbance_writer.js?v=r2-20260809-6"),
+      import("../hakoniwa/hakoniwa-pdu.js?v=r8-core-20260811-5"),
+      import("../state_source/state_source_factory.js?v=r8-core-20260811-5"),
+      import("../fault_injection/disturbance_writer.js?v=r8-core-20260811-5"),
     ]);
     this.pduRuntime = {
       Hakoniwa: hakoniwaModule.Hakoniwa,
@@ -142,9 +145,15 @@ export class DroneViewer {
     this.renderManager = new DroneRenderManager({ getDrones });
     if (!this.syncHookInstalled) {
       setBeforeDronesUpdateHook(() => {
-        this.syncDroneStates().catch((e) => {
-          console.error("[DroneViewer] syncDroneStates failed:", e);
-        });
+        if (this.syncInFlight) return;
+        this.syncInFlight = true;
+        this.syncDroneStates()
+          .catch((e) => {
+            console.error("[DroneViewer] syncDroneStates failed:", e);
+          })
+          .finally(() => {
+            this.syncInFlight = false;
+          });
       });
       this.syncHookInstalled = true;
     }
@@ -249,6 +258,12 @@ export class DroneViewer {
       }));
   }
 
+  getStateSourceDiagnostics() {
+    const source = this.stateSource?.getDiagnostics?.() ?? null;
+    const transport = this.pduRuntime?.Hakoniwa?.getDiagnostics?.() ?? null;
+    return source ? { ...source, transport } : { transport };
+  }
+
   focusDroneById(droneId, options = {}) {
     return focusDroneById(droneId, options);
   }
@@ -257,12 +272,24 @@ export class DroneViewer {
     return getFocusedDroneId();
   }
 
+  setSelectedDroneId(droneId) {
+    return setOperationalSelectedDroneId(droneId);
+  }
+
   resize() {
     return resizeViewer();
   }
 
   setFollowSelectedEnabled(enabled) {
     return setCameraFollowEnabled(!!enabled);
+  }
+
+  setEnvironmentScope(scope, options = {}) {
+    return setEnvironmentScope(scope, options);
+  }
+
+  getEnvironmentScope() {
+    return getEnvironmentScope();
   }
 
   getRotorFaultScales() {

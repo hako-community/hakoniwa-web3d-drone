@@ -40,7 +40,36 @@ class StaticViewerContractTest(unittest.TestCase):
             "focusDroneById(",
             "setFollowSelectedEnabled(",
             "getFocusedDroneId()",
+            "getStateSourceDiagnostics()",
             "resize()",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, source)
+        self.assertIn("this.syncInFlight", source)
+        fleet_source = (ROOT / "src/state_source/fleet_state_source.js").read_text(
+            encoding="utf-8"
+        )
+        for marker in ("packetCount", "lastError", "stateCount"):
+            self.assertIn(marker, fleet_source)
+        singleton_version = "hakoniwa-pdu.js?v=r8-core-20260811-5"
+        self.assertIn(singleton_version, source)
+        for relative_path in (
+            "src/state_source/fleet_state_source.js",
+            "src/state_source/legacy_state_source.js",
+            "src/fault_injection/disturbance_writer.js",
+        ):
+            module_source = (ROOT / relative_path).read_text(encoding="utf-8")
+            with self.subTest(relative_path=relative_path):
+                self.assertIn(singleton_version, module_source)
+
+    def test_fleet_source_exposes_core_sequence_diagnostics(self) -> None:
+        source = (ROOT / "src/state_source/fleet_state_source.js").read_text(
+            encoding="utf-8"
+        )
+        for marker in (
+            "lastSequenceId",
+            "lastPacketReceivedAtMilliseconds",
+            "getDiagnostics()",
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, source)
@@ -196,6 +225,24 @@ class StaticViewerContractTest(unittest.TestCase):
         self.assertIn("loadSceneProfileCatalog", loader)
         self.assertIn("async listDroneProfiles", viewer)
 
+    def test_lod1_city_environment_contract(self) -> None:
+        city = (ROOT / "src/lod1_city_environment.js").read_text(encoding="utf-8")
+        loader = (ROOT / "src/loader.js").read_text(encoding="utf-8")
+        environment = (ROOT / "src/environment.js").read_text(encoding="utf-8")
+        viewer = (ROOT / "src/public/drone_viewer.js").read_text(encoding="utf-8")
+        self.assertIn("LOD1_CITY_ENVIRONMENT_VERSION", city)
+        self.assertIn("THREE.ShapeUtils.triangulateShape", city)
+        self.assertIn("THREE.BufferGeometry", city)
+        self.assertIn('type: "lod1-city"', city)
+        self.assertIn("sourceZMin - zBaselineM", city)
+        self.assertIn("zBaselineM,", city)
+        self.assertIn("lod1Path", loader)
+        self.assertIn("buildLod1CityEnvironment", environment)
+        self.assertIn("LOD1_CITY_ENVIRONMENT_VERSION", viewer)
+        app = (ROOT / "src/app.js").read_text(encoding="utf-8")
+        self.assertIn("HakoniwaFrame.rosPosToThree(cameraTargetRos)", app)
+        self.assertNotIn("HakoniwaFrame.rosToThreePosition", app)
+
     def test_readme_uses_current_operational_contract(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         for command in (
@@ -208,6 +255,43 @@ class StaticViewerContractTest(unittest.TestCase):
 
         self.assertNotIn("mac-main_hako_drone_service", readme)
         self.assertNotIn("run-web-bridge.bash", readme)
+
+    def test_plateau_3dtiles_scope_contract(self) -> None:
+        city = (ROOT / "src/plateau_3dtiles_environment.js").read_text(encoding="utf-8")
+        environment = (ROOT / "src/environment.js").read_text(encoding="utf-8")
+        app = (ROOT / "src/app.js").read_text(encoding="utf-8")
+        viewer = (ROOT / "src/public/drone_viewer.js").read_text(encoding="utf-8")
+        for marker in (
+            "PLATEAU_3DTILES_ENVIRONMENT_VERSION",
+            "buildEcefToHakoniwaMatrix",
+            'import("3d-tiles-renderer")',
+            "tiles.errorTarget",
+            "tiles.setResolutionFromRenderer",
+            "tiles.update()",
+            "DRACOLoader",
+            "setDRACOLoader",
+            "GLTFCesiumRTCExtension",
+            "coordinateExtension",
+            "localClippingEnabled",
+            "clippingPlanes",
+            "lruCache.maxSize",
+            "OrthographicCamera",
+            "preloadCamera",
+            "tiles.setResolution(preloadCamera",
+            "sourceStats",
+            "rendererSources",
+            "originHeightM",
+            "verticalReference",
+            "verticalOffsetM",
+        ):
+            self.assertIn(marker, city)
+        self.assertIn('environmentType === "plateau-3dtiles"', environment)
+        self.assertIn("setEnvironmentScope", app)
+        self.assertIn("environment.updateEnvironment", app)
+        self.assertIn("setEnvironmentScope(scope", viewer)
+        orbit = (ROOT / "src/orbit_camera.js").read_text(encoding="utf-8")
+        self.assertIn("maxPolarAngleDeg", orbit)
+        self.assertIn("this.controls.enablePan", orbit)
 
 
 if __name__ == "__main__":
