@@ -1,5 +1,5 @@
 import { IStateSource } from "./i_state_source.js";
-import { Hakoniwa } from "../hakoniwa/hakoniwa-pdu.js";
+import { Hakoniwa } from "../hakoniwa/hakoniwa-pdu.js?v=r8-core-20260811-5";
 import { pduToJs_Twist } from "../../thirdparty/hakoniwa-pdu-javascript/src/pdu_msgs/geometry_msgs/pdu_conv_Twist.js";
 import { pduToJs_HakoHilActuatorControls } from "../../thirdparty/hakoniwa-pdu-javascript/src/pdu_msgs/hako_mavlink_msgs/pdu_conv_HakoHilActuatorControls.js";
 import { pduToJs_DroneStatus } from "../../thirdparty/hakoniwa-pdu-javascript/src/pdu_msgs/hako_msgs/pdu_conv_DroneStatus.js";

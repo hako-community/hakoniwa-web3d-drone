@@ -2,6 +2,7 @@
 import * as THREE from "three"; 
 import { RenderEntity } from "./render_entity.js";
 import { HakoniwaFrame } from "./frame.js";
+import { DroneOperationalVisualization } from "./drone_operational_visualization.js?v=phase-e-20260813-13";
 
 export class Drone {
     constructor(scene, loader, cfg, {
@@ -24,6 +25,9 @@ export class Drone {
         this.rotors = [];
         this.rotorDirections = [];
         this.cameras = [];
+        this.visualRoot = null;
+        this.operationalVisualization = null;
+        this._operationalWorldPosition = new THREE.Vector3();
 
         // 状態
         this.latestPose = null;      // { rosPos, rosRpyDeg }
@@ -54,6 +58,10 @@ export class Drone {
     async _initGraphics() {
         const cfg = this.cfg;
         const root = new RenderEntity(cfg.name);
+        const visualRoot = new THREE.Group();
+        visualRoot.name = `${cfg.name}-physical-model-visual`;
+        root.object3d.add(visualRoot);
+        this.visualRoot = visualRoot;
 
         const brightenModelMaterials = (obj3d) => {
             obj3d.traverse((obj) => {
@@ -84,13 +92,15 @@ export class Drone {
             reject
             );
         });
+        this._applyModelPresentation(modelObj, cfg.model);
         brightenModelMaterials(modelObj);
 
         const modelEnt = new RenderEntity(cfg.name + "_model");
         modelEnt.setAttachment(modelObj);
         modelEnt.setPositionRos(cfg.model.pos);
         modelEnt.setRpyRosDeg(cfg.model.hpr);
-        root.setModel(modelEnt);
+        root.model = modelEnt;
+        visualRoot.add(modelEnt.object3d);
 
         if (cfg.pos) root.setPositionRos(cfg.pos);
         if (cfg.hpr) root.setRpyRosDeg(cfg.hpr);
@@ -102,6 +112,7 @@ export class Drone {
             const rotorModelEnt = new RenderEntity(r.name + "_model");
 
             this.loader.load(r.model.model_path, (gltf) => {
+                this._applyModelPresentation(gltf.scene, r.model);
                 rotorModelEnt.setAttachment(gltf.scene);
             });
 
@@ -111,7 +122,7 @@ export class Drone {
 
             rotorEnt.setPositionRos(r.pos);
             rotorEnt.setRpyRosDeg(r.hpr);
-            root.addChild(rotorEnt);
+            visualRoot.add(rotorEnt.object3d);
 
             this.rotors.push(rotorEnt);
             this.rotorDirections.push(this._resolveRotorSpinDirection(r, this.rotorDirections.length));
@@ -167,6 +178,35 @@ export class Drone {
 
         this.scene.add(root.object3d);
         this.root = root;
+        this.operationalVisualization = new DroneOperationalVisualization(this.scene, this.droneId);
+    }
+
+    _applyModelPresentation(modelObj, modelConfig = {}) {
+        const scale = Number(modelConfig?.scale);
+        if (Number.isFinite(scale) && scale > 0) {
+            modelObj.scale.multiplyScalar(scale);
+        }
+        const hiddenNodes = new Set(
+            Array.isArray(modelConfig?.hiddenNodes) ? modelConfig.hiddenNodes.map(String) : []
+        );
+        if (hiddenNodes.size > 0) {
+            modelObj.traverse((obj) => {
+                if (hiddenNodes.has(String(obj.name))) obj.visible = false;
+            });
+        }
+    }
+
+    setOperationalScope(scope) {
+        this.operationalVisualization?.setScope(scope);
+        const configuredScale = Number(
+            scope === "wide" ? this.cfg?.wideVisualScale : this.cfg?.localVisualScale
+        );
+        const visualScale = Number.isFinite(configuredScale) ? Math.max(1, configuredScale) : 1;
+        this.visualRoot?.scale.setScalar(visualScale);
+    }
+
+    setOperationalSelected(selected) {
+        this.operationalVisualization?.setSelected(selected);
     }
 
     _resolveRotorSpinDirection(rotorConfig, index) {
@@ -241,6 +281,10 @@ export class Drone {
             this._updateDebug(dt, keyState);
         }
         this._updateViewCameras(dt);
+        if (this.root && this.operationalVisualization) {
+            this.root.getWorldPosition(this._operationalWorldPosition);
+            this.operationalVisualization.update(this._operationalWorldPosition, dt);
+        }
     }
     _updateViewCameras(dt) {
         if (!this.viewCameras.length) return;

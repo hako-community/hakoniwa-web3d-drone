@@ -76,6 +76,42 @@ export class OrbitCamera {
     this.mode = mode;
   }
 
+  setPose({
+    position,
+    target,
+    far = null,
+    minPolarAngleDeg = null,
+    maxPolarAngleDeg = null,
+    minDistanceM = null,
+    enablePan = null,
+  } = {}) {
+    if (Array.isArray(position) && position.length >= 3) {
+      this.camera.position.set(Number(position[0]), Number(position[1]), Number(position[2]));
+    }
+    if (Array.isArray(target) && target.length >= 3) {
+      this.controls.target.set(Number(target[0]), Number(target[1]), Number(target[2]));
+    }
+    if (Number.isFinite(Number(far)) && Number(far) > this.camera.near) {
+      this.camera.far = Number(far);
+      this.camera.updateProjectionMatrix();
+    }
+    if (minPolarAngleDeg != null && Number.isFinite(Number(minPolarAngleDeg))) {
+      this.controls.minPolarAngle = THREE.MathUtils.degToRad(Number(minPolarAngleDeg));
+    }
+    if (maxPolarAngleDeg != null && Number.isFinite(Number(maxPolarAngleDeg))) {
+      this.controls.maxPolarAngle = THREE.MathUtils.degToRad(Number(maxPolarAngleDeg));
+    }
+    if (minDistanceM != null && Number.isFinite(Number(minDistanceM))) {
+      this.controls.minDistance = Math.max(0, Number(minDistanceM));
+    }
+    if (typeof enablePan === "boolean") {
+      this.controls.enablePan = enablePan;
+    }
+    this.mode = "fixed";
+    this.followDistance = this.camera.position.distanceTo(this.controls.target);
+    this.controls.update();
+  }
+
   toggleMode() {
     this.mode = (this.mode === "follow") ? "fixed" : "follow";
     console.log("[OrbitCamera] mode:", this.mode);

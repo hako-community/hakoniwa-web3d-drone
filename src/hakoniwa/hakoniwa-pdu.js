@@ -1,7 +1,7 @@
 // Import the implementation directly. Going through src/index.js creates a
 // cycle: drone_viewer -> hakoniwa-pdu -> index -> drone_viewer.
-import { PduManager } from '../../thirdparty/hakoniwa-pdu-javascript/src/PduManager.js';
-import { WebSocketCommunicationService } from '../../thirdparty/hakoniwa-pdu-javascript/src/impl/WebSocketCommunicationService.js';
+import { PduManager } from '../../thirdparty/hakoniwa-pdu-javascript/src/PduManager.js?v=r8-core-20260811-5';
+import { WebSocketCommunicationService } from '../../thirdparty/hakoniwa-pdu-javascript/src/impl/WebSocketCommunicationService.js?v=r8-core-20260811-5';
 
 let CONFIG = {
   pdu_def_path: null,
@@ -80,11 +80,19 @@ export const Hakoniwa = (() => {
         return { isConnected, hasManager: !!pduManager };
     }
 
+    function getDiagnostics() {
+        return {
+            ...getConnectionState(),
+            transport: pduManager?.get_diagnostics?.() ?? null,
+        };
+    }
+
     return {
         configure,
         connect,
         disconnect,
         withPdu,
         getConnectionState,
+        getDiagnostics,
     };
 })();

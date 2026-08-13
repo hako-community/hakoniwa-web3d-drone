@@ -1,4 +1,4 @@
-import { Hakoniwa } from "../hakoniwa/hakoniwa-pdu.js";
+import { Hakoniwa } from "../hakoniwa/hakoniwa-pdu.js?v=r8-core-20260811-5";
 import { jsToPdu_Disturbance } from "../../thirdparty/hakoniwa-pdu-javascript/src/pdu_msgs/hako_msgs/pdu_conv_Disturbance.js";
 import { Disturbance } from "../../thirdparty/hakoniwa-pdu-javascript/src/pdu_msgs/hako_msgs/pdu_jstype_Disturbance.js";
 import { DisturbanceUserCustom } from "../../thirdparty/hakoniwa-pdu-javascript/src/pdu_msgs/hako_msgs/pdu_jstype_DisturbanceUserCustom.js";
