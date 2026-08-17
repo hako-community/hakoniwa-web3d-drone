@@ -237,15 +237,32 @@ http://localhost:18080/index.html?viewerConfigPath=/config/viewer-config-terrain
 
 ## モデル資産
 
-標準`base`モデルは`assets/models/`に含まれます。
+標準`base`モデルと、Godot版から移植した分割型`origin_01`モデルは
+`assets/models/`に含まれます。
 
 ```text
 assets/models/
 |- base-drone-frame.glb
 |- base-drone-prop.glb
 |- base-drone-camera.glb
-`- base-floor.glb
+|- base-floor.glb
+|- origin_01_body.glb
+|- origin_01_camera.glb
+|- origin_01_lidar.glb
+|- origin_01_lidar2.glb
+|- origin_01_transporter.glb
+`- propeller_origin_01.glb
 ```
+
+`base-drone-frame.glb`、`base-drone-prop.glb`、`base-drone-camera.glb`は
+`quadrotor_base`プロファイルで使用します。`base-floor.glb`は一部の
+compactシーン設定で使用するため、いずれも配布対象です。
+
+分割型`origin_01`モデルは
+`hakoniwa-godot-drone/Models/origin-01`を移植したもので、
+`origin-01-godot-LICENSE.txt`の条件が適用されます。従来の
+`origin-01.glb`は互換用に残していますが、`origin_01`プロファイルからは
+参照しません。
 
 ライセンスやサイズの都合で配布しないモデルは`assets/local_models/`へ配置し、
 Gitへコミットしません。PLATEAU由来資産の生成・配布は`hakoniwa-simenv-data`と

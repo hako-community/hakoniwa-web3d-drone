@@ -22,6 +22,7 @@ export class Drone {
 
         // 描画用
         this.root = null;
+        this.attachments = [];
         this.rotors = [];
         this.rotorDirections = [];
         this.cameras = [];
@@ -105,6 +106,33 @@ export class Drone {
         if (cfg.pos) root.setPositionRos(cfg.pos);
         if (cfg.hpr) root.setRpyRosDeg(cfg.hpr);
 
+        // 本体に固定された追加パーツ（センサー、運搬機構など）
+        if (Array.isArray(cfg.attachments)) {
+            for (const a of cfg.attachments) {
+                const attachmentEnt = new RenderEntity(a.name);
+                const attachmentModelEnt = new RenderEntity(a.name + "_model");
+                const attachmentObj = await new Promise((resolve, reject) => {
+                    this.loader.load(
+                        a.model.model_path,
+                        (gltf) => resolve(gltf.scene),
+                        undefined,
+                        reject
+                    );
+                });
+
+                this._applyModelPresentation(attachmentObj, a.model);
+                brightenModelMaterials(attachmentObj);
+                attachmentModelEnt.setAttachment(attachmentObj);
+                attachmentModelEnt.setPositionRos(a.model.pos ?? [0, 0, 0]);
+                attachmentModelEnt.setRpyRosDeg(a.model.hpr ?? [0, 0, 0]);
+                attachmentEnt.setModel(attachmentModelEnt);
+                attachmentEnt.setPositionRos(a.pos ?? [0, 0, 0]);
+                attachmentEnt.setRpyRosDeg(a.hpr ?? [0, 0, 0]);
+                visualRoot.add(attachmentEnt.object3d);
+                this.attachments.push(attachmentEnt);
+            }
+        }
+
         // rotors
         if (cfg.rotors) {
             for (const r of cfg.rotors) {
@@ -140,6 +168,8 @@ export class Drone {
                 camModelEnt.setRpyRosDeg(c.model.hpr);
 
                 this.loader.load(c.model.model_path, (gltf) => {
+                    this._applyModelPresentation(gltf.scene, c.model);
+                    brightenModelMaterials(gltf.scene);
                     camModelEnt.setAttachment(gltf.scene);
                 });
 

@@ -3,12 +3,46 @@
     "wideVisualScale": 120,
     "localVisualScale": 12,
     "model": {
-      "model_path": "../assets/models/origin-01.glb",
+      "model_path": "../assets/models/origin_01_body.glb",
       "pos": [0.0, 0.0, 0.0],
       "hpr": [0.0, 0.0, 180.0],
-      "scale": 0.6,
-      "hiddenNodes": ["Dynamics"]
+      "scale": 0.6
     },
+    "attachments": [
+      {
+        "name": "origin_transporter",
+        "model": {
+          "model_path": "../assets/models/origin_01_transporter.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.6
+        },
+        "pos": [0.0, 0.0, 0.0],
+        "hpr": [0.0, 0.0, 0.0]
+      },
+      {
+        "name": "origin_lidar_front",
+        "model": {
+          "model_path": "../assets/models/origin_01_lidar.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.6
+        },
+        "pos": [0.264, 0.0, 0.2292],
+        "hpr": [0.0, 0.0, 0.0]
+      },
+      {
+        "name": "origin_lidar_top",
+        "model": {
+          "model_path": "../assets/models/origin_01_lidar2.glb",
+          "pos": [0.0, 0.0, 0.0],
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.6
+        },
+        "pos": [0.0, 0.0, 0.1308],
+        "hpr": [0.0, 0.0, 0.0]
+      }
+    ],
     "rotors": [
       {
         "name": "origin_rotor1",
@@ -62,7 +96,7 @@
     "cameras": [
       {
         "name": "front_camera",
-        "pos": [0.32, 0.0, 0.02],
+        "pos": [0.324, 0.0, 0.1308],
         "hpr": [0.0, 0.0, 0.0],
         "fov": 90,
         "near": 0.1,
@@ -74,9 +108,10 @@
           "height": 0.3
         },
         "model": {
-          "model_path": "../assets/models/base-drone-camera.glb",
+          "model_path": "../assets/models/origin_01_camera.glb",
           "pos": [0.0, 0.0, 0.0],
-          "hpr": [0.0, 0.0, 180.0]
+          "hpr": [0.0, 0.0, 0.0],
+          "scale": 0.6
         }
       }
     ]

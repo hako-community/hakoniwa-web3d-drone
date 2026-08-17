@@ -117,6 +117,16 @@ function normalizeDroneModelPaths(droneCfg, droneTypesUrl) {
   if (droneCfg.model?.model_path) {
     droneCfg.model.model_path = resolveUrlFromBase(droneCfg.model.model_path, droneTypesUrl);
   }
+  if (Array.isArray(droneCfg.attachments)) {
+    for (const attachment of droneCfg.attachments) {
+      if (attachment?.model?.model_path) {
+        attachment.model.model_path = resolveUrlFromBase(
+          attachment.model.model_path,
+          droneTypesUrl
+        );
+      }
+    }
+  }
   if (Array.isArray(droneCfg.rotors)) {
     for (const rotor of droneCfg.rotors) {
       if (rotor?.model?.model_path) {

@@ -256,6 +256,60 @@ class StaticViewerContractTest(unittest.TestCase):
         self.assertNotIn("mac-main_hako_drone_service", readme)
         self.assertNotIn("run-web-bridge.bash", readme)
 
+    def test_origin_01_uses_modular_godot_assets(self) -> None:
+        config = json.loads(
+            (ROOT / "config/drone_types-origin-01.json").read_text(encoding="utf-8")
+        )["origin_01"]
+
+        self.assertEqual("../assets/models/origin_01_body.glb", config["model"]["model_path"])
+        attachment_paths = {
+            item["model"]["model_path"] for item in config["attachments"]
+        }
+        self.assertEqual(
+            {
+                "../assets/models/origin_01_lidar.glb",
+                "../assets/models/origin_01_lidar2.glb",
+                "../assets/models/origin_01_transporter.glb",
+            },
+            attachment_paths,
+        )
+        self.assertEqual(
+            "../assets/models/origin_01_camera.glb",
+            config["cameras"][0]["model"]["model_path"],
+        )
+        self.assertEqual([0.324, 0.0, 0.1308], config["cameras"][0]["pos"])
+        attachment_positions = {
+            item["name"]: item["pos"] for item in config["attachments"]
+        }
+        self.assertEqual([0.264, 0.0, 0.2292], attachment_positions["origin_lidar_front"])
+        self.assertEqual([0.0, 0.0, 0.1308], attachment_positions["origin_lidar_top"])
+        self.assertNotIn("base-drone", json.dumps(config))
+        for path in (
+            "origin_01_body.glb",
+            "origin_01_camera.glb",
+            "origin_01_lidar.glb",
+            "origin_01_lidar2.glb",
+            "origin_01_transporter.glb",
+            "propeller_origin_01.glb",
+            "origin-01-godot-LICENSE.txt",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue((ROOT / "assets/models" / path).is_file())
+
+        loader = (ROOT / "src/loader.js").read_text(encoding="utf-8")
+        drone = (ROOT / "src/drone.js").read_text(encoding="utf-8")
+        self.assertIn("droneCfg.attachments", loader)
+        self.assertIn("cfg.attachments", drone)
+
+        base = json.loads(
+            (ROOT / "config/drone_types-quadrotor_base.json").read_text(encoding="utf-8")
+        )["quadrotor_base"]
+        self.assertIn("base-drone-frame.glb", base["model"]["model_path"])
+        self.assertTrue(
+            all("base-drone-prop.glb" in item["model"]["model_path"] for item in base["rotors"])
+        )
+        self.assertIn("base-drone-camera.glb", base["cameras"][0]["model"]["model_path"])
+
     def test_plateau_3dtiles_scope_contract(self) -> None:
         city = (ROOT / "src/plateau_3dtiles_environment.js").read_text(encoding="utf-8")
         environment = (ROOT / "src/environment.js").read_text(encoding="utf-8")
